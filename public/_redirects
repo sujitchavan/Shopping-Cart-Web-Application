@@ -1,0 +1,2 @@
+# SPA fallback: client-side routes such as /cart are served by index.html.
+/*    /index.html   200

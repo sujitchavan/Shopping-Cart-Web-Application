@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+.vite/
+
+# Test and coverage output
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.vitest/
+
+# Audit output (regenerate with the steps in docs/SECURITY.md)
+audit/
+
+# Environment files (only the example is committed; VITE_* values are public anyway)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Caches
+.eslintcache
+.prettiercache
+.cache/
+.temp/
+.tmp/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Hosting CLIs
+.vercel/
+.netlify/

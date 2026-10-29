@@ -1,0 +1,100 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. The default Tailwind palette is removed (`--color-*: initial`), so markup can only
+ * use these semantic colours and an off-palette class such as `bg-red-500` simply does not exist.
+ * Every text/background pair below is checked against WCAG 2.2 AA (4.5:1 text, 3:1 UI) in both
+ * schemes; see docs/DECISIONS.md (ADR-010).
+ */
+@theme {
+  --color-*: initial;
+
+  --color-surface: #ffffff;
+  --color-surface-muted: #f4f4f5;
+  --color-image: #ffffff;
+  --color-ink: #18181b;
+  --color-ink-muted: #52525b;
+  --color-line: #e4e4e7;
+  --color-line-strong: #71717a;
+  --color-accent: #4338ca;
+  --color-accent-hover: #3730a3;
+  --color-on-accent: #ffffff;
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
+  --color-on-danger: #ffffff;
+  --color-success: #15803d;
+  --color-warning-bg: #fffbeb;
+  --color-warning-ink: #78350f;
+  --color-warning-line: #d97706;
+  --color-star: #b45309;
+  --color-focus: #4338ca;
+  --color-backdrop: rgb(24 24 27 / 0.5);
+  --color-transparent: transparent;
+
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+
+  --radius-card: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: #18181b;
+    --color-surface-muted: #27272a;
+    --color-image: #ffffff;
+    --color-ink: #fafafa;
+    --color-ink-muted: #a1a1aa;
+    --color-line: #3f3f46;
+    --color-line-strong: #a1a1aa;
+    --color-accent: #a5b4fc;
+    --color-accent-hover: #c7d2fe;
+    --color-on-accent: #1e1b4b;
+    --color-danger: #fca5a5;
+    --color-danger-hover: #fecaca;
+    --color-on-danger: #450a0a;
+    --color-success: #86efac;
+    --color-warning-bg: #422006;
+    --color-warning-ink: #fde68a;
+    --color-warning-line: #f59e0b;
+    --color-star: #fbbf24;
+    --color-focus: #a5b4fc;
+    --color-backdrop: rgb(0 0 0 / 0.7);
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface font-sans text-ink antialiased;
+  }
+
+  /* One deliberate, contrast-checked focus ring for every focusable element. */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  /* Programmatic focus targets (page headings, error headings) should not show a ring on click. */
+  [tabindex='-1']:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  dialog::backdrop {
+    background-color: var(--color-backdrop);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
