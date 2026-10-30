@@ -1,7 +1,7 @@
 import { configureStore, createListenerMiddleware } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
-import { catalogApi } from '@/features/catalog';
 import { addCartPersistenceListener, loadCart } from '@/features/cart';
+import { baseApi } from '@/shared/api';
 import { env } from '@/shared/config/env';
 import type { SafeStorage } from '@/shared/lib/safeStorage';
 import type { AppStartListening } from './listenerMiddleware';
@@ -24,7 +24,7 @@ export function createAppStore({ storage, listenToWindow = true }: CreateStoreOp
     reducer: rootReducer,
     preloadedState: { cart: loadCart(storage) },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware().prepend(listenerMiddleware.middleware).concat(catalogApi.middleware),
+      getDefaultMiddleware().prepend(listenerMiddleware.middleware).concat(baseApi.middleware),
     devTools: env.isDev,
   });
 
