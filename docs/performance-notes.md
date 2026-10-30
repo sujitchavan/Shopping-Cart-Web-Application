@@ -4,12 +4,12 @@ Deployed build: <https://shopping-cart-web-application-axqo.vercel.app/>
 
 ## Summary
 
-| | Before | After |
-| --- | --- | --- |
-| Lighthouse Performance (production URL) | 81 | 100 |
-| Document on repeat visit | `200`, 1.2 kB | `304 Not Modified`, 0.1 kB |
-| JS + CSS on repeat visit | ~178 kB downloaded from the network | 0 bytes (served from disk cache) |
-| Slowest static request on repeat visit | 175 ms (`zod` chunk) | 9 ms |
+|                                         | Before                              | After                            |
+| --------------------------------------- | ----------------------------------- | -------------------------------- |
+| Lighthouse Performance (production URL) | 81                                  | 100                              |
+| Document on repeat visit                | `200`, 1.2 kB                       | `304 Not Modified`, 0.1 kB       |
+| JS + CSS on repeat visit                | ~178 kB downloaded from the network | 0 bytes (served from disk cache) |
+| Slowest static request on repeat visit  | 175 ms (`zod` chunk)                | 9 ms                             |
 
 The fix is in commit `b09c10f` ("added JS bundle, asset initial load cache on refresh").
 
@@ -22,17 +22,17 @@ route chunk. Nothing was served from cache, even though Vite already gives every
 
 ![Network panel before: every request is a 200 with a full transfer size](images/network-before.png)
 
-| Request | Transfer | Time |
-| --- | --- | --- |
-| `cart` (document) | 1.2 kB | 49 ms |
-| `index-*.js` | 7.9 kB | 56 ms |
-| `react-*.js` | 71.5 kB | 125 ms |
-| `router-*.js` | 32.5 kB | 74 ms |
-| `vendor-*.js` | 1.1 kB | 127 ms |
-| `redux-*.js` | 30.2 kB | 139 ms |
-| `zod-*.js` | 26.7 kB | 175 ms |
-| `index-*.css` | 5.3 kB | 39 ms |
-| `CartPage-*.js` | 3.2 kB | 72 ms |
+| Request           | Transfer | Time   |
+| ----------------- | -------- | ------ |
+| `cart` (document) | 1.2 kB   | 49 ms  |
+| `index-*.js`      | 7.9 kB   | 56 ms  |
+| `react-*.js`      | 71.5 kB  | 125 ms |
+| `router-*.js`     | 32.5 kB  | 74 ms  |
+| `vendor-*.js`     | 1.1 kB   | 127 ms |
+| `redux-*.js`      | 30.2 kB  | 139 ms |
+| `zod-*.js`        | 26.7 kB  | 175 ms |
+| `index-*.css`     | 5.3 kB   | 39 ms  |
+| `CartPage-*.js`   | 3.2 kB   | 72 ms  |
 
 Three things caused this:
 
@@ -129,9 +129,6 @@ affects performance.
   the score. The Network panel comparison is the direct evidence for the caching fix. Lighthouse
   shows that the change did not regress the first-load experience and that the deployed build
   scores well overall.
-- **Screenshots compare different routes.** The "before" network capture is from `/cart` and the
-  "after" capture is from `/`. Both load the same shared shell (entry, vendor chunks, CSS), which
-  is what this fix targets. Only the route chunk differs (`CartPage-*` vs `CatalogPage-*`).
 
 ## Re-render propagation (checked by design, not changed here)
 
