@@ -152,3 +152,27 @@ API:
 URL state:
 
 - Junk `page`, `sort` and `category` params fall back to defaults.
+
+## Edge case deliberately not handled
+
+**Two tabs changing the cart at the same moment.**
+
+Each tab saves its whole cart to `localStorage`, and other tabs replace their cart with it
+(`crossTabSync.ts` → `cartHydrated`). If tab A and tab B both save before either receives the
+other's `storage` event, the later save overwrites the earlier one, and that tab's change is lost.
+
+Example: tab A adds a jacket and tab B increments a T-shirt within the same few milliseconds. The
+final cart has only one of the two changes.
+
+**What does work:** normal use across tabs. Each change reaches the other tabs straight away and
+they update (`e2e/cross-tab.spec.ts`). Changes are lost only inside that millisecond window.
+
+**Why I didn't handle it:**
+
+- A proper fix means merging line by line, with a version or timestamp on each cart line, instead
+  of replacing the whole cart. That adds complexity to every cart write and to the stored format,
+  for a case one person rarely triggers.
+- A real checkout would move the cart to the server (`loadCart` / `saveCart` are where that plugs
+  in), and conflicts are better resolved there, once, with server-side versioning.
+
+**Revisit if:** carts become shared across devices or users, or analytics show changes being lost.
