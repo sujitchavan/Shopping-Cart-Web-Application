@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
+import { PLACEHOLDER_IMAGE } from '@/shared/lib/safeUrl';
 import { PRODUCTS_URL, productsFailWith, productsReturn } from '@/test/msw/handlers';
 import { server } from '@/test/msw/server';
 import { renderApp } from '@/test/renderWithProviders';
@@ -62,7 +63,7 @@ describe('Catalog page', () => {
     expect(productTitles()).toEqual(['<b>Bold</b> Hat']);
     expect(document.querySelector('b')).toBeNull();
     const image = within(screen.getByRole('list', { name: 'Products' })).getByRole('presentation');
-    expect(image).toHaveAttribute('src', '/placeholder.svg');
+    expect(image).toHaveAttribute('src', PLACEHOLDER_IMAGE);
     expect(screen.getByText('No ratings')).toBeInTheDocument();
   });
 

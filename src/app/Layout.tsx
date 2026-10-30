@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigation } from 'react-router'
 import { clsx } from 'clsx';
 import { CartBadge, StorageNotice, useCrossTabCartSync } from '@/features/cart';
 import { LiveRegion, SkipLink } from '@/shared/ui';
+import logoUrl from '@/assets/favicon.svg';
 
 /**
  * After client-side navigation, move focus to the new page's <h1>. Otherwise focus stays on a link
@@ -30,7 +31,7 @@ export function Layout() {
       <header className="border-b border-line">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
           <Link to="/" className="flex min-h-11 items-center gap-2 rounded-lg text-lg font-bold">
-            <img src="/favicon.svg" alt="" width={28} height={28} />
+            <img src={logoUrl} alt="" width={28} height={28} />
             Storefront
           </Link>
           <nav aria-label="Main" className="flex items-center gap-1">

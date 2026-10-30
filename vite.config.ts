@@ -24,6 +24,8 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    // Never inline assets as data: URLs (the CSP's img-src blocks them); emit hashed files instead.
+    assetsInlineLimit: 0,
     rollupOptions: {
       output: {
         // Vendor chunks change far less often than app code, so they stay cached across deploys.
