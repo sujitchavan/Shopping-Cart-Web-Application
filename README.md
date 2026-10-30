@@ -2,6 +2,10 @@
 
 A production-grade shopping cart SPA built on the [FakeStore API](https://fakestoreapi.com/products). It has a filterable, paginated catalogue and a cart that persists across reloads and syncs between tabs.
 
+**Live demo:** <https://shopping-cart-web-application-axqo.vercel.app/>
+
+**Docs:** [ADR-001 State management](docs/adr-001-state-management.md) · [Performance notes](docs/performance-notes.md) · [Testing strategy](docs/TESTING.md) · [Security](docs/SECURITY.md)
+
 **Stack:** React 19 · TypeScript (strict, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) · Vite 6 · Redux Toolkit + RTK Query · React Router 7 · Zod 4 · Tailwind CSS v4 · Vitest + React Testing Library + MSW · Playwright + axe
 
 ## Quick start
@@ -100,7 +104,7 @@ src/
   shared/     config/env, lib (money, safeStorage, safeUrl, announce, …), ui (Button, ErrorState, …)
   test/       MSW server, fixtures, renderWithProviders
 e2e/          Playwright specs
-docs/         IMPLEMENTATION_PLAN, DECISIONS, SECURITY, TESTING
+docs/         adr-001-state-management, performance-notes, TESTING, SECURITY
 ```
 
 **Boundaries are enforced by ESLint:**
@@ -113,42 +117,62 @@ docs/         IMPLEMENTATION_PLAN, DECISIONS, SECURITY, TESTING
 
 ## Key decisions
 
-Full reasoning is in [docs/DECISIONS.md](docs/DECISIONS.md):
+- **Redux Toolkit + RTK Query.** One store and one data layer that scales to more features. Full reasoning is in [ADR-001](docs/adr-001-state-management.md).
+- **URL as state** for the catalogue view, so filters survive reload, can be shared and work with Back.
+- **Zod at every trust boundary:** API, storage, URL and env. See [SECURITY.md](docs/SECURITY.md).
+- **Large catalogues:** pagination behind a repository seam (see below).
+- **Cart persistence:** listener middleware writes to versioned `localStorage`, with cross-tab sync and no echo loop.
+- **Integer-cent money:** 3 × $19.99 = $59.97 exactly.
 
-- **Redux Toolkit + RTK Query.** One store and one data layer that scales to more features (ADR-001).
-- **URL as state** for the catalogue view (ADR-002).
-- **Zod at every trust boundary:** API, storage, URL and env (ADR-003).
-- **Large catalogues:** pagination behind a `getCatalogPage(query)` repository seam. It is local today and becomes a server query by changing one endpoint (ADR-004).
-- **Cart persistence:** listener middleware writes to versioned `localStorage`, with cross-tab sync and no echo loop (ADR-005).
-- **Integer-cent money:** 3 × $19.99 = $59.97 exactly (ADR-006).
+### Large catalogues: pagination, not virtualization
+
+FakeStore returns 20 products. A real catalogue could have thousands, so the listing is built as if
+it did: **numbered pagination, 12 per page, with the page number in the URL**.
+
+The UI never filters the full list itself. It asks a repository for one page:
+`getCatalogPage({ category, q, sort, page, pageSize })` returns that page's items plus totals.
+FakeStore can't filter, sort or paginate, so today that endpoint runs a pure pipeline
+(`buildCatalogPage`) over the cached product list. For a real backend, the `queryFn` becomes
+`query: (q) => ({ url: '/products/search', params: q })`. Hooks, components and URL state don't
+change, and RTK Query caches each page separately.
+
+Why pagination over the alternatives:
+
+| Option                                   | Why not (for this product)                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Virtualization** (e.g. `react-window`) | It solves DOM size, not data size: the client still has to download and hold the whole catalogue to filter and sort it. Items outside the viewport aren't in the DOM, so browser find-in-page, screen-reader list counts and keyboard focus on unmounted items all break. A 12-card responsive grid is nowhere near a DOM-size problem. |
+| **Infinite scroll**                      | Back after opening a product loses your position unless scroll is restored carefully. The footer becomes unreachable. "Page 3 of electronics" can't be shared. Screen-reader and keyboard users get content appearing with no clear boundary.                                                                                           |
+| **Pagination (chosen)**                  | Maps directly onto server-side paging (`?page=&pageSize=`). Every view has a URL. Each page is a small, fixed amount of DOM. On page change, focus moves to the results heading so keyboard and screen-reader users know where they are.                                                                                                |
+
+The trade-off is more clicks when browsing a long list. If analytics showed people mostly scroll
+rather than search or filter, the next step would be a "Load more" button that appends the next
+server page and keeps the page in the URL. Virtualization would only come in if a single page had
+to show hundreds of rows.
 
 ### Cart failure scenarios handled
 
-| Scenario                         | Handling                                                                                                                                                              |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rapid repeated clicks            | Each click is one synchronous Redux action, so there's no lost update. The reducer clamps at the limit.                                                               |
-| Stale state across tabs          | `storage` events re-validate the cart and hydrate it. Resolution is last write wins (see ADR-012).                                                                    |
-| Adding beyond stock              | Max 10 per line, or the stock if known. "+" is `aria-disabled` with a visible reason, and the reducer clamps too. Real stock must be checked server-side at checkout. |
-| Price changed since adding       | The total uses the live price, and the line says "price updated from $X".                                                                                             |
-| Product removed from catalogue   | Flagged "No longer available", excluded from the total, and only Remove is offered.                                                                                   |
-| Tampered or corrupted storage    | Per-line validation, clamping, key re-derivation and a 100 kB cap. Stored prices are never used for totals when live prices exist.                                    |
-| Storage blocked or full          | Falls back to memory, with a one-time notice.                                                                                                                         |
-| Catalogue fails on the cart page | The cart renders from snapshots, with a "prices may be out of date" banner and Retry.                                                                                 |
-| Accidental "Clear cart"          | A native `<dialog>` asks for confirmation. Cancel is focused first.                                                                                                   |
+| Scenario                         | Handling                                                                                                                                                                                                                                                               |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rapid repeated clicks            | Each click is one synchronous Redux action applied to the latest state, so there's no lost or doubled update. The reducer clamps at the limit (unit test: ten rapid increments).                                                                                       |
+| Stale state across tabs          | Another tab's write arrives as a `storage` event, is re-validated and replaces this tab's cart. Resolution is last write wins, with no merge. Hydrating isn't persisted, so tabs don't echo writes back and forth (E2E: `cross-tab.spec.ts`).                          |
+| Adding beyond stock              | FakeStore has no stock field, so the limit is 10 per line. The model accepts a `stock` value and uses the lower of the two when present. "+" is `aria-disabled` with a visible reason, and the reducer clamps too. Real stock must be checked server-side at checkout. |
+| Price changed since adding       | The total uses the live price, and the line says "price updated from $X".                                                                                                                                                                                              |
+| Product removed from catalogue   | Flagged "No longer available", excluded from the total, and only Remove is offered.                                                                                                                                                                                    |
+| Tampered or corrupted storage    | Per-line validation, clamping, key re-derivation and a 100 kB cap. Stored prices are never used for totals when live prices exist.                                                                                                                                     |
+| Storage blocked or full          | Falls back to memory, with a one-time notice.                                                                                                                                                                                                                          |
+| Catalogue fails on the cart page | The cart renders from snapshots, with a "prices may be out of date" banner and Retry.                                                                                                                                                                                  |
+| Accidental "Clear cart"          | A native `<dialog>` asks for confirmation. Cancel is focused first.                                                                                                                                                                                                    |
 
 ## Quality gates
 
 - **Tests:** 224 unit and integration tests (Vitest), plus 11 Playwright tests per browser project. Details are in [docs/TESTING.md](docs/TESTING.md).
-- **Coverage:** about 97% lines overall. The cart, catalogue model and shared libs are at 98–100%. Tiered thresholds are enforced in CI.
+- **Coverage:** 98.4% lines and 93.8% branches overall. The cart, catalogue model and shared libs are at 98–100% lines. CI enforces thresholds of 80/75 globally and 95/90 for core logic. The report is uploaded as a CI artifact. Breakdown and reasoning are in [docs/TESTING.md](docs/TESTING.md#coverage).
 - **Accessibility:** axe scans show zero serious or critical violations on the catalogue, cart, empty cart and error states.
 - **Security:** a CSP with no `unsafe-inline`, verified in E2E. `npm audit` reports 0 vulnerabilities. Details are in [docs/SECURITY.md](docs/SECURITY.md).
-- **Bundle:** split into vendor chunks. Roughly gzipped: React 69 kB, router 31 kB, Redux 29 kB, Zod 26 kB, app code 15 kB, all routes lazy-loaded.
+- **Bundle:** split into vendor chunks. Roughly gzipped: React 69 kB, router 31 kB, Redux 29 kB, Zod 26 kB, app code 15 kB, all routes lazy-loaded. Hashed assets are cached immutably. Lighthouse Performance is 100 on the deployed build. See [docs/performance-notes.md](docs/performance-notes.md).
 
 ## Deviations from the implementation plan
 
-These are all recorded in [docs/DECISIONS.md](docs/DECISIONS.md):
-
-- **Zod 4 and Vitest 4.** These replace Zod 3 and Vitest 3, which have security advisories (ADR-011).
-- **Built-in `no-restricted-imports`.** It replaces `eslint-plugin-boundaries` (ADR-008).
-- **Small accessibility refinements** (ADR-009).
-
+- **Zod 4 and Vitest 4.** These replace Zod 3 and Vitest 3, which have security advisories.
+- **Built-in `no-restricted-imports`.** It replaces `eslint-plugin-boundaries`.
+- **Small accessibility refinements.**
