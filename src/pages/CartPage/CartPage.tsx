@@ -17,13 +17,14 @@ import {
   selectCartSubtotalCents,
   selectPayableItemCount,
 } from '@/store/cartPricingSelectors';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector, useAppStore } from '@/store/hooks';
 import { APP_NAME } from '../appName';
 
 type FocusTarget = { kind: 'remove'; productId: number } | { kind: 'empty' };
 
 export function CartPage() {
   const dispatch = useAppDispatch();
+  const store = useAppStore();
   // Subscribing keeps live prices fresh; the cart still renders from snapshots meanwhile.
   const {
     isError: catalogFailed,
@@ -47,17 +48,39 @@ export function CartPage() {
     setFocusTarget(null);
   }, [focusTarget, lines]);
 
+  /*
+   * Row callbacks must keep the same identity across cart changes, or every memoized row re-renders.
+   * So they take the product id, and handleRemove reads the current lines from the store at click
+   * time instead of closing over `lines`.
+   */
+  const handleIncrement = useCallback(
+    (productId: number) => dispatch(increment(productId)),
+    [dispatch],
+  );
+  const handleDecrement = useCallback(
+    (productId: number) => dispatch(decrement(productId)),
+    [dispatch],
+  );
+  const registerRemoveButton = useCallback(
+    (productId: number, element: HTMLButtonElement | null) => {
+      if (element) removeButtons.current.set(productId, element);
+      else removeButtons.current.delete(productId);
+    },
+    [],
+  );
+
   const handleRemove = useCallback(
     (productId: number, title: string) => {
-      const index = lines.findIndex((line) => line.productId === productId);
-      const neighbour = lines[index + 1] ?? lines[index - 1];
+      const current = selectCartLinesWithPricing(store.getState());
+      const index = current.findIndex((line) => line.productId === productId);
+      const neighbour = current[index + 1] ?? current[index - 1];
       dispatch(removeItem(productId));
       announce(`Removed ${title} from your cart.`);
       setFocusTarget(
         neighbour ? { kind: 'remove', productId: neighbour.productId } : { kind: 'empty' },
       );
     },
-    [dispatch, lines],
+    [dispatch, store],
   );
 
   return (
@@ -95,13 +118,10 @@ export function CartPage() {
                 <li key={line.productId}>
                   <CartLineItem
                     line={line}
-                    onIncrement={() => dispatch(increment(line.productId))}
-                    onDecrement={() => dispatch(decrement(line.productId))}
-                    onRemove={() => handleRemove(line.productId, line.title)}
-                    removeButtonRef={(element) => {
-                      if (element) removeButtons.current.set(line.productId, element);
-                      else removeButtons.current.delete(line.productId);
-                    }}
+                    onIncrement={handleIncrement}
+                    onDecrement={handleDecrement}
+                    onRemove={handleRemove}
+                    registerRemoveButton={registerRemoveButton}
                   />
                 </li>
               ))}

@@ -1,25 +1,50 @@
-import type { Ref } from 'react';
+import { memo, useCallback } from 'react';
 import { formatCents } from '@/shared/lib/money';
 import { Button } from '@/shared/ui';
 import type { PricedCartLine } from '../../model/cartPricing';
 import { QuantityStepper } from '../QuantityStepper/QuantityStepper';
 
+/*
+ * Callbacks take the product id, so the parent can pass the same function to every row. Together
+ * with `memo`, changing one line's quantity re-renders only that row.
+ */
 interface CartLineItemProps {
   line: PricedCartLine;
-  onIncrement: () => void;
-  onDecrement: () => void;
-  onRemove: () => void;
-  removeButtonRef?: Ref<HTMLButtonElement>;
+  onIncrement: (productId: number) => void;
+  onDecrement: (productId: number) => void;
+  onRemove: (productId: number, title: string) => void;
+  registerRemoveButton?: (productId: number, element: HTMLButtonElement | null) => void;
 }
 
-export function CartLineItem({
+/** Priced lines are rebuilt on every cart change, so compare their (primitive) fields, not identity. */
+function sameLine(a: PricedCartLine, b: PricedCartLine): boolean {
+  return (Object.keys(a) as (keyof PricedCartLine)[]).every((key) => a[key] === b[key]);
+}
+
+function propsEqual(prev: CartLineItemProps, next: CartLineItemProps): boolean {
+  return (
+    prev.onIncrement === next.onIncrement &&
+    prev.onDecrement === next.onDecrement &&
+    prev.onRemove === next.onRemove &&
+    prev.registerRemoveButton === next.registerRemoveButton &&
+    sameLine(prev.line, next.line)
+  );
+}
+
+export const CartLineItem = memo(function CartLineItem({
   line,
   onIncrement,
   onDecrement,
   onRemove,
-  removeButtonRef,
+  registerRemoveButton,
 }: CartLineItemProps) {
-  const titleId = `cart-line-${line.productId}-title`;
+  const { productId, title } = line;
+  // Stable per row, so React does not detach and re-attach the ref on every render.
+  const removeButtonRef = useCallback(
+    (element: HTMLButtonElement | null) => registerRemoveButton?.(productId, element),
+    [registerRemoveButton, productId],
+  );
+  const titleId = `cart-line-${productId}-title`;
   return (
     <article
       aria-labelledby={titleId}
@@ -70,16 +95,16 @@ export function CartLineItem({
               title={line.title}
               quantity={line.quantity}
               max={line.maxQuantity}
-              onIncrement={onIncrement}
-              onDecrement={onDecrement}
+              onIncrement={() => onIncrement(productId)}
+              onDecrement={() => onDecrement(productId)}
             />
           )}
           <Button
             ref={removeButtonRef}
             variant="ghost"
             size="sm"
-            aria-label={`Remove ${line.title} from cart`}
-            onClick={onRemove}
+            aria-label={`Remove ${title} from cart`}
+            onClick={() => onRemove(productId, title)}
           >
             Remove
           </Button>
@@ -87,4 +112,4 @@ export function CartLineItem({
       </div>
     </article>
   );
-}
+}, propsEqual);
