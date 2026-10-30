@@ -9,7 +9,7 @@ export function useCatalog() {
 
   const query = useMemo<CatalogQuery>(
     () => ({
-      category: params.category,
+      categories: params.categories,
       q: params.q.trim(),
       sort: params.sort,
       page: params.page,

@@ -63,7 +63,7 @@ export function Layout() {
       </main>
 
       <footer className="border-t border-line py-6 text-center text-sm text-ink-muted">
-        Demo storefront. Product data from FakeStore API.
+        © {new Date().getFullYear()} Storefront. All rights reserved.
       </footer>
       <LiveRegion />
     </div>

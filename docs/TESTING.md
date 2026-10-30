@@ -4,8 +4,8 @@
 
 | Layer       | Tool                                 | What it covers                                                                                                | Count                                |
 | ----------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| Unit        | Vitest                               | Pure logic: cart reducers, selectors, pricing, schemas, filter/sort/paginate, money, `safeUrl`, `safeStorage` | Most of the 224                      |
-| Integration | Vitest + React Testing Library + MSW | Pages and components rendered with a real Redux store, with the network mocked                                | Part of the 224                      |
+| Unit        | Vitest                               | Pure logic: cart reducers, selectors, pricing, schemas, filter/sort/paginate, money, `safeUrl`, `safeStorage` | Most of the 239                      |
+| Integration | Vitest + React Testing Library + MSW | Pages and components rendered with a real Redux store, with the network mocked                                | Part of the 239                      |
 | End-to-end  | Playwright + axe                     | Real user flows in real browsers against the production build, under the production CSP                       | 11 tests × 6 browser/device projects |
 
 Most tests sit where the bugs that cost money live: totals, quantity limits, persistence and
@@ -70,14 +70,14 @@ or down. The nightly `@live` run checks that the real API still matches our sche
 
 ### Current numbers
 
-From `npm run test:coverage` on 2026-10-30 (224 tests, 22 files):
+From `npm run test:coverage` on 2026-10-30 (225 tests, 23 files):
 
 | Metric     | Covered          |
 | ---------- | ---------------- |
-| Statements | 97.92% (615/628) |
-| Branches   | 93.75% (360/384) |
-| Functions  | 97.20% (209/215) |
-| Lines      | 98.36% (543/552) |
+| Statements | 97.97% (629/642) |
+| Branches   | 93.83% (365/389) |
+| Functions  | 97.28% (215/221) |
+| Lines      | 98.40% (556/565) |
 
 By area (lines / branches):
 
@@ -88,11 +88,11 @@ By area (lines / branches):
 | `features/catalog/model`      | 100%  | 94.4%    | 95 / 90                      |
 | `features/catalog/api`        | 100%  | 93.8%    | 95 / 90 (`productSchema.ts`) |
 | `shared/lib`                  | 100%  | 93.6%    | 95 / 90                      |
-| `features/cart/components`    | 95.3% | 94.3%    | 80 / 75                      |
+| `features/cart/components`    | 96.2% | 95.0%    | 80 / 75                      |
 | `features/catalog/components` | 96.6% | 90.9%    | 80 / 75                      |
 | `features/catalog/hooks`      | 100%  | 88.9%    | 80 / 75                      |
 | `shared/ui`                   | 96.6% | 85.7%    | 80 / 75                      |
-| `pages`                       | 97.1% | 96.9%    | 80 / 75                      |
+| `pages`                       | 97.3% | 96.9%    | 80 / 75                      |
 | `store`                       | 100%  | 66.7%    | 80 / 75 (global)             |
 
 The full HTML report is uploaded by CI as the `coverage` artifact on every run (Actions → run →
@@ -151,7 +151,7 @@ API:
 
 URL state:
 
-- Junk `page`, `sort` and `category` params fall back to defaults.
+- Junk `page`, `sort` and `category` params fall back to defaults. Bad `category` entries are dropped one by one; the rest are de-duplicated, sorted and capped at 20.
 
 ## Edge case deliberately not handled
 

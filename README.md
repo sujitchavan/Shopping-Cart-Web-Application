@@ -6,7 +6,23 @@ A production-grade shopping cart SPA built on the [FakeStore API](https://fakest
 
 **Docs:** [ADR-001 State management](docs/adr-001-state-management.md) · [Performance notes](docs/performance-notes.md) · [Testing strategy](docs/TESTING.md) · [Security](docs/SECURITY.md)
 
-**Stack:** React 19 · TypeScript (strict, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) · Vite 6 · Redux Toolkit + RTK Query · React Router 7 · Zod 4 · Tailwind CSS v4 · Vitest + React Testing Library + MSW · Playwright + axe
+## Tech stack
+
+| Area            | Technology                                                                    | Version         |
+| --------------- | ----------------------------------------------------------------------------- | --------------- |
+| Runtime         | Node.js                                                                       | ≥ 22.13         |
+| UI              | React / React DOM                                                             | 19.3.1          |
+| Language        | TypeScript (strict, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) | 5.9.3           |
+| Build           | Vite                                                                          | 6.4.5           |
+| State           | Redux Toolkit (incl. RTK Query) / React Redux                                 | 2.13.0 / 9.3.1  |
+| Routing         | React Router                                                                  | 7.18.5          |
+| Validation      | Zod                                                                           | 4.6.7           |
+| Styling         | Tailwind CSS (`@tailwindcss/vite`) / clsx                                     | 4.3.3 / 2.1.1   |
+| Unit tests      | Vitest (+ `@vitest/coverage-v8`)                                              | 4.1.12          |
+| Component tests | React Testing Library / user-event                                            | 16.3.3 / 14.6.8 |
+| API mocking     | MSW                                                                           | 2.15.0          |
+| E2E             | Playwright / `@axe-core/playwright`                                           | 1.64.1 / 4.14.0 |
+| Lint / format   | ESLint / Prettier                                                             | 9.39.5 / 3.9.10 |
 
 ## Quick start
 
@@ -38,7 +54,7 @@ Configuration: copy `.env.example` to `.env` to point at another API. `VITE_API_
 **Catalogue**
 
 - Responsive grid; each card lays itself out with container queries.
-- Category filter, debounced search, five sort orders and numbered pagination. All of it lives in the URL, so views are shareable and the back button works.
+- Multi-select category chips (one, several or All), debounced search, five sort orders and numbered pagination. All of it lives in the URL, so views are shareable and the back button works.
 - Distinct loading (skeleton), error (with Retry), empty-catalogue and no-matches (with Clear filters) states.
 
 **Cart**
@@ -136,11 +152,18 @@ FakeStore returns 20 products. A real catalogue could have thousands, so the lis
 it did: **numbered pagination, 12 per page, with the page number in the URL**.
 
 The UI never filters the full list itself. It asks a repository for one page:
-`getCatalogPage({ category, q, sort, page, pageSize })` returns that page's items plus totals.
+`getCatalogPage({ categories, q, sort, page, pageSize })` returns that page's items plus totals.
 FakeStore can't filter, sort or paginate, so today that endpoint runs a pure pipeline
 (`buildCatalogPage`) over the cached product list. For a real backend, the `queryFn` becomes
 `query: (q) => ({ url: '/products/search', params: q })`. Hooks, components and URL state don't
 change, and RTK Query caches each page separately.
+
+Several categories are written as repeated params: `?category=electronics&category=jewelery`.
+Category names contain spaces and apostrophes and could contain commas, so a comma-separated list
+would be fragile, and repeated params are what search backends usually expect. The list is
+de-duplicated and sorted before it reaches the URL or the query, so one selection has exactly one
+URL and one cache entry. An empty list means All, and so does selecting every category. Old
+single-category links still work.
 
 Why pagination over the alternatives:
 
@@ -171,7 +194,7 @@ to show hundreds of rows.
 
 ## Quality gates
 
-- **Tests:** 224 unit and integration tests (Vitest), plus 11 Playwright tests per browser project. Details are in [docs/TESTING.md](docs/TESTING.md).
+- **Tests:** 239 unit and integration tests (Vitest), plus 11 Playwright tests per browser project. Details are in [docs/TESTING.md](docs/TESTING.md).
 - **Coverage:** 98.4% lines and 93.8% branches overall. The cart, catalogue model and shared libs are at 98–100% lines. CI enforces thresholds of 80/75 globally and 95/90 for core logic. The report is uploaded as a CI artifact. Breakdown and reasoning are in [docs/TESTING.md](docs/TESTING.md#coverage).
 - **Accessibility:** axe scans show zero serious or critical violations on the catalogue, cart, empty cart and error states.
 - **Security:** a CSP with no `unsafe-inline`, verified in E2E. `npm audit` reports 0 vulnerabilities. Details are in [docs/SECURITY.md](docs/SECURITY.md).

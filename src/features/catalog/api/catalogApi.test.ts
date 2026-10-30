@@ -93,7 +93,7 @@ describe('catalogApi.getCatalogPage', () => {
     const store = createTestStore();
     const result = await store.dispatch(
       catalogApi.endpoints.getCatalogPage.initiate({
-        category: 'electronics',
+        categories: ['electronics'],
         q: 'ssd',
         sort: 'price-asc',
         page: 1,
@@ -110,7 +110,7 @@ describe('catalogApi.getCatalogPage', () => {
     const store = createTestStore();
     const result = await store.dispatch(
       catalogApi.endpoints.getCatalogPage.initiate({
-        category: null,
+        categories: [],
         q: '',
         sort: 'name-asc',
         page: 1,

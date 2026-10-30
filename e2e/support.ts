@@ -41,9 +41,9 @@ export async function expectBadge(page: Page, count: number) {
   );
 }
 
-/** Below `md`, category and sort live behind a "Filters" disclosure. */
-export async function openFiltersIfCollapsed(page: Page) {
-  const toggle = page.getByRole('button', { name: /^Filters/ });
+/** Below `md`, sort lives behind a "Sort" disclosure. */
+export async function openSortIfCollapsed(page: Page) {
+  const toggle = page.getByRole('button', { name: /^Sort/ });
   if (await toggle.isVisible()) {
     if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
   }

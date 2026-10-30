@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { formatCents } from '@/shared/lib/money';
 import { pluralize } from '@/shared/lib/pluralize';
-import { Button } from '@/shared/ui';
 
 interface CartSummaryProps {
   itemCount: number;
@@ -27,9 +26,6 @@ export function CartSummary({ itemCount, subtotalCents, children }: CartSummaryP
         </dd>
       </dl>
       <p className="text-sm text-ink-muted">Taxes and shipping are calculated at checkout.</p>
-      <Button disabled className="w-full">
-        Checkout (demo)
-      </Button>
       {children}
     </section>
   );

@@ -22,7 +22,8 @@ export const SORT_LABELS: Record<SortKey, string> = {
 
 /** What the UI asks the repository for. Shaped like a server-side search request on purpose. */
 export interface CatalogQuery {
-  category: string | null;
+  /** Categories to include; empty means all. */
+  categories: string[];
   q: string;
   sort: SortKey;
   page: number;
@@ -39,7 +40,8 @@ export interface CatalogPage {
   page: number;
   pageCount: number;
   pageSize: number;
-  /** The category actually applied: unknown categories fall back to null (all). */
-  category: string | null;
+  /** The categories actually applied, sorted. Unknown ones are dropped; empty means all. */
+  selectedCategories: string[];
+  /** Every category in the catalogue, sorted. */
   categories: string[];
 }

@@ -5,13 +5,24 @@ import { DEFAULT_SORT, SORT_KEYS, type SortKey } from '../model/types';
 
 export const MAX_QUERY_LENGTH = 100;
 const MAX_PAGE = 10_000;
+const MAX_CATEGORIES = 20;
+const MAX_CATEGORY_LENGTH = 100;
+
+/** Trimmed, de-duplicated and sorted, so one selection always has one URL (and one cache key). */
+function canonicalCategories(values: readonly string[]): string[] {
+  const valid = values
+    .map((value) => value.trim())
+    .filter((value) => value !== '' && value.length <= MAX_CATEGORY_LENGTH);
+  return [...new Set(valid)].sort().slice(0, MAX_CATEGORIES);
+}
 
 /**
  * Every param falls back silently to its default, so a hand-edited or malicious URL
  * (`?sort=evil&page=-4`) can never crash the page. Values are only ever used as plain text.
+ * Categories repeat (`?category=a&category=b`); bad entries are dropped one by one.
  */
 export const CatalogParamsSchema = z.object({
-  category: z.string().trim().min(1).max(100).nullable().catch(null),
+  categories: z.array(z.string()).catch([]).transform(canonicalCategories),
   q: z
     .string()
     .catch('')
@@ -21,7 +32,8 @@ export const CatalogParamsSchema = z.object({
 });
 
 export interface CatalogParams {
-  category: string | null;
+  /** Empty means all categories. */
+  categories: string[];
   q: string;
   sort: SortKey;
   page: number;
@@ -29,7 +41,7 @@ export interface CatalogParams {
 
 export function parseCatalogParams(searchParams: URLSearchParams): CatalogParams {
   return CatalogParamsSchema.parse({
-    category: searchParams.get('category'),
+    categories: searchParams.getAll('category'),
     q: searchParams.get('q') ?? '',
     sort: searchParams.get('sort') ?? DEFAULT_SORT,
     page: searchParams.get('page') ?? 1,
@@ -46,7 +58,12 @@ export function applyCatalogParams(
     if (value === null || isDefault) next.delete(key);
     else next.set(key, value);
   };
-  if ('category' in patch) set('category', patch.category ?? null, patch.category === null);
+  if ('categories' in patch) {
+    next.delete('category');
+    for (const category of canonicalCategories(patch.categories ?? [])) {
+      next.append('category', category);
+    }
+  }
   if ('q' in patch) {
     const q = (patch.q ?? '').trim().slice(0, MAX_QUERY_LENGTH);
     set('q', q, q === '');
@@ -75,7 +92,7 @@ export function useCatalogParams() {
   );
 
   const clearFilters = useCallback(() => {
-    setParams({ category: null, q: '' });
+    setParams({ categories: [], q: '' });
   }, [setParams]);
 
   const hrefForPage = useCallback(

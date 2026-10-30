@@ -3,9 +3,11 @@ import {
   buildCatalogPage,
   filterByCategory,
   getCategories,
+  normalizeCategories,
   paginate,
   searchProducts,
   sortProducts,
+  toggleCategory,
 } from './filterSort';
 import type { CatalogQuery } from './types';
 
@@ -13,7 +15,7 @@ const catalog = parsedCatalog();
 const ids = (products: { id: number }[]) => products.map((p) => p.id);
 
 const query = (overrides: Partial<CatalogQuery> = {}): CatalogQuery => ({
-  category: null,
+  categories: [],
   q: '',
   sort: 'name-asc',
   page: 1,
@@ -33,14 +35,48 @@ describe('getCategories', () => {
 });
 
 describe('filterByCategory', () => {
-  it('returns a copy of everything for null', () => {
-    const all = filterByCategory(catalog, null);
+  it('returns a copy of everything for an empty selection', () => {
+    const all = filterByCategory(catalog, []);
     expect(all).toHaveLength(14);
     expect(all).not.toBe(catalog);
   });
 
   it('keeps only the matching category', () => {
-    expect(ids(filterByCategory(catalog, 'electronics'))).toEqual([8, 9, 10, 11]);
+    expect(ids(filterByCategory(catalog, ['electronics']))).toEqual([8, 9, 10, 11]);
+  });
+
+  it('keeps products from any of several categories', () => {
+    expect(ids(filterByCategory(catalog, ['jewelery', 'electronics']))).toEqual([
+      5, 6, 7, 8, 9, 10, 11,
+    ]);
+  });
+});
+
+describe('normalizeCategories', () => {
+  const available = getCategories(catalog);
+
+  it('drops unknown values and duplicates, and sorts', () => {
+    expect(
+      normalizeCategories(['jewelery', 'evil<script>', 'electronics', 'jewelery'], available),
+    ).toEqual(['electronics', 'jewelery']);
+  });
+
+  it('treats selecting every category as selecting none', () => {
+    expect(normalizeCategories([...available].reverse(), available)).toEqual([]);
+  });
+
+  it('handles an empty catalogue', () => {
+    expect(normalizeCategories(['electronics'], [])).toEqual([]);
+  });
+});
+
+describe('toggleCategory', () => {
+  it('adds a category that is not selected', () => {
+    expect(toggleCategory(['jewelery'], 'electronics')).toEqual(['jewelery', 'electronics']);
+  });
+
+  it('removes a category that is selected', () => {
+    expect(toggleCategory(['jewelery', 'electronics'], 'jewelery')).toEqual(['electronics']);
   });
 });
 
@@ -137,7 +173,7 @@ describe('buildCatalogPage', () => {
   it('combines category, search, sort and pagination', () => {
     const page = buildCatalogPage(
       catalog,
-      query({ category: "women's clothing", q: 'womens', sort: 'price-desc' }),
+      query({ categories: ["women's clothing"], q: 'womens', sort: 'price-desc' }),
     );
     expect(ids(page.items)).toEqual([12, 13, 14]);
     expect(page).toMatchObject({
@@ -145,13 +181,23 @@ describe('buildCatalogPage', () => {
       catalogSize: 14,
       page: 1,
       pageCount: 1,
-      category: "women's clothing",
+      selectedCategories: ["women's clothing"],
     });
   });
 
+  it('combines several categories with sort', () => {
+    const page = buildCatalogPage(
+      catalog,
+      query({ categories: ['jewelery', 'electronics'], sort: 'price-desc' }),
+    );
+    expect(page.total).toBe(7);
+    expect(page.items.every((p) => ['jewelery', 'electronics'].includes(p.category))).toBe(true);
+    expect(page.selectedCategories).toEqual(['electronics', 'jewelery']);
+  });
+
   it('falls back to all categories for an unknown category', () => {
-    const page = buildCatalogPage(catalog, query({ category: 'evil<script>' }));
-    expect(page.category).toBeNull();
+    const page = buildCatalogPage(catalog, query({ categories: ['evil<script>'] }));
+    expect(page.selectedCategories).toEqual([]);
     expect(page.total).toBe(14);
   });
 
