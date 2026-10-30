@@ -36,6 +36,10 @@ const BACKPACK = 'Fjallraven Foldsack Backpack';
 const TSHIRT = 'Mens Casual Premium Slim Fit T-Shirts';
 const JACKET = 'Mens Cotton Jacket';
 
+// The app is imported fresh (see above), so the first render also loads the lazy cart route. Under
+// coverage instrumentation in a full run that can exceed the default 1 s wait.
+const FIRST_RENDER_TIMEOUT_MS = 5_000;
+
 afterEach(() => {
   vi.doUnmock(STEPPER);
 });
@@ -50,8 +54,14 @@ describe('Cart page re-renders', () => {
     );
     const { user } = renderApp({ route: '/cart' });
     // Wait for live catalogue titles and prices, so the snapshot → live price join has settled.
-    await screen.findByRole('button', { name: `Increase quantity of ${TSHIRT}` });
-    await waitFor(() => expect(screen.getByTestId('subtotal')).toHaveTextContent('$188.24'));
+    await screen.findByRole(
+      'button',
+      { name: `Increase quantity of ${TSHIRT}` },
+      { timeout: FIRST_RENDER_TIMEOUT_MS },
+    );
+    await waitFor(() => expect(screen.getByTestId('subtotal')).toHaveTextContent('$188.24'), {
+      timeout: FIRST_RENDER_TIMEOUT_MS,
+    });
 
     renders.clear();
     await user.click(screen.getByRole('button', { name: `Increase quantity of ${BACKPACK}` }));

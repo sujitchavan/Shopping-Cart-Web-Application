@@ -80,7 +80,8 @@ the same validation as API data (`features/cart/model/cartSchema.ts`):
 - **Blocked or full storage** (private mode, quota) falls back to memory with a one-time notice.
 
 The URL is also input. Category, search, sort and page params are parsed with Zod and fall back to
-defaults (`useCatalogParams.ts`). Page is capped, and the search string is length-limited.
+defaults (`useCatalogParams.ts`). Page is capped, the search string is length-limited, and at most
+20 `category` values of up to 100 characters are kept.
 
 Configuration is validated too. `shared/config/env.ts` is the only module allowed to read
 `import.meta.env` (enforced by ESLint), and `VITE_API_BASE_URL` must be `https://`. Everything
@@ -103,6 +104,6 @@ policy:
 
 ## Decided not to act on
 
-| Item                                           | Reasoning                                                                                                                                                    |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Encrypting the cart in `localStorage`          | It holds product IDs, quantities and public prices, nothing sensitive. Any key would have to ship in the bundle, so encryption would add no real protection.                                                                                                     |
+| Item                                  | Reasoning                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Encrypting the cart in `localStorage` | It holds product IDs, quantities and public prices, nothing sensitive. Any key would have to ship in the bundle, so encryption would add no real protection. |

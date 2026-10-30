@@ -34,37 +34,3 @@ export function SortSelect({
     </div>
   );
 }
-
-export function CategorySelect({
-  value,
-  categories,
-  onChange,
-}: {
-  value: string | null;
-  categories: string[];
-  onChange: (category: string | null) => void;
-}) {
-  const id = useId();
-  return (
-    <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium">
-        Category
-      </label>
-      <select
-        id={id}
-        value={value ?? ''}
-        onChange={(event) => {
-          onChange(event.target.value === '' ? null : event.target.value);
-        }}
-        className={`${selectClassName} capitalize`}
-      >
-        <option value="">All categories</option>
-        {categories.map((category) => (
-          <option key={category} value={category}>
-            {category}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   cartLine,
   expectBadge,
-  openFiltersIfCollapsed,
+  openSortIfCollapsed,
   productCard,
   stubApi,
   trackConsoleErrors,
@@ -23,11 +23,13 @@ test('browse, filter, add to cart, adjust quantities and remove', async ({ page 
   await expectBadge(page, 0);
 
   // Filter → search → sort, all reflected in the URL.
-  await openFiltersIfCollapsed(page);
-  await page.getByLabel('Category').selectOption('electronics');
+  // The checkbox is visually hidden; users click the chip (its label).
+  await page.locator('label', { hasText: 'electronics' }).click();
+  await expect(page.getByRole('checkbox', { name: 'electronics' })).toBeChecked();
   await expect(page).toHaveURL(/category=electronics/);
   await page.getByLabel('Search products').fill('ssd');
   await expect(page).toHaveURL(/q=ssd/);
+  await openSortIfCollapsed(page);
   await page.getByLabel('Sort by').selectOption('price-asc');
   await expect(page).toHaveURL(/sort=price-asc/);
 

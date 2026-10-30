@@ -178,6 +178,7 @@ export const CartLineItem = memo(function CartLineItem(...) { ... }, propsEqual)
 ```
 
 **Result:** only the changed row re-renders. A new test (`CartPage.rerender.test.tsx`) failed on the
+old code and passes with the fix (see Verification below).
 
 ## Verification
 

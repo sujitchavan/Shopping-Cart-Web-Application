@@ -26,7 +26,7 @@ export function CatalogPage() {
     retry,
   } = useCatalog();
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
-  const hasFilters = params.category !== null || params.q.trim() !== '';
+  const hasFilters = params.categories.length > 0 || params.q.trim() !== '';
 
   // Results change without a page load, so the count is the feedback. Debounced, so a screen
   // reader does not speak on every keystroke.
@@ -69,10 +69,10 @@ export function CatalogPage() {
       <PageHeading>All products</PageHeading>
 
       <FilterBar
-        params={{ ...params, category: page?.category ?? params.category }}
+        params={{ ...params, categories: page?.selectedCategories ?? params.categories }}
         categories={page?.categories ?? []}
         onSearch={(q) => setParams({ q }, { replace: true })}
-        onCategoryChange={(category) => setParams({ category })}
+        onCategoriesChange={(categories) => setParams({ categories })}
         onSortChange={(sort) => setParams({ sort })}
       />
 
@@ -107,7 +107,7 @@ export function CatalogPage() {
         ) : page.total === 0 ? (
           <EmptyState
             title="No matching products"
-            message={describeEmptyResults(params.q, page.category)}
+            message={describeEmptyResults(params.q, page.selectedCategories)}
             action={
               hasFilters ? (
                 <Button variant="secondary" onClick={clearFilters}>
@@ -127,9 +127,13 @@ export function CatalogPage() {
   );
 }
 
-function describeEmptyResults(q: string, category: string | null): string {
+function describeEmptyResults(q: string, categories: readonly string[]): string {
   const query = q.trim();
+  const category = categoryList.format(categories);
   if (query && category) return `No products match "${query}" in ${category}.`;
   if (query) return `No products match "${query}".`;
   return category ? `No products in ${category}.` : 'No products match your filters.';
 }
+
+/** "electronics", "electronics or jewelery", "a, b, or c". */
+const categoryList = new Intl.ListFormat('en', { type: 'disjunction' });

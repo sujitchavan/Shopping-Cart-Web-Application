@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { PLACEHOLDER_IMAGE } from '@/shared/lib/safeUrl';
 import { PRODUCTS_URL, productsFailWith, productsReturn } from '@/test/msw/handlers';
@@ -71,7 +71,7 @@ describe('Catalog page', () => {
     const { user, router } = renderApp();
     await productList();
 
-    await user.selectOptions(screen.getByLabelText('Category'), 'electronics');
+    await user.click(screen.getByRole('checkbox', { name: 'electronics' }));
     await waitFor(() => expect(productTitles()).toHaveLength(4));
     expect(router.state.location.search).toBe('?category=electronics');
 
@@ -85,6 +85,41 @@ describe('Catalog page', () => {
     expect(router.state.location.search).toBe('?category=electronics&q=SSD&sort=price-desc');
   });
 
+  it('selects several categories, goes back one toggle, and resets with All', async () => {
+    const { user, router } = renderApp();
+    await productList();
+    const all = screen.getByRole('button', { name: 'All' });
+    expect(all).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByRole('checkbox', { name: 'jewelery' }));
+    await user.click(screen.getByRole('checkbox', { name: 'electronics' }));
+    await waitFor(() => expect(screen.getByText('Showing 1–7 of 7')).toBeInTheDocument());
+    expect(router.state.location.search).toBe('?category=electronics&category=jewelery');
+    expect(all).toHaveAttribute('aria-pressed', 'false');
+
+    await act(() => router.navigate(-1));
+    await waitFor(() => expect(productTitles()).toHaveLength(3));
+    expect(screen.getByRole('checkbox', { name: 'electronics' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'jewelery' })).toBeChecked();
+
+    await user.click(all);
+    await waitFor(() => expect(screen.getByText('Showing 1–12 of 14')).toBeInTheDocument());
+    expect(router.state.location.search).toBe('');
+    expect(screen.getByRole('checkbox', { name: 'jewelery' })).not.toBeChecked();
+  });
+
+  it('treats selecting every category as All', async () => {
+    const { user, router } = renderApp({
+      route: "/?category=electronics&category=jewelery&category=men's clothing",
+    });
+    await productList();
+    await user.click(screen.getByRole('checkbox', { name: "women's clothing" }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true'),
+    );
+    expect(router.state.location.search).toBe('');
+  });
+
   it('shows a distinct no-matches state with Clear filters', async () => {
     const { user } = renderApp({ route: '/?q=zzzz&category=jewelery' });
     expect(await screen.findByText('No products match "zzzz" in jewelery.')).toBeInTheDocument();
@@ -94,11 +129,18 @@ describe('Catalog page', () => {
     expect(screen.getByLabelText('Search products')).toHaveValue('');
   });
 
+  it('names every selected category in the no-matches message', async () => {
+    renderApp({ route: '/?q=zzzz&category=jewelery&category=electronics' });
+    expect(
+      await screen.findByText('No products match "zzzz" in electronics or jewelery.'),
+    ).toBeInTheDocument();
+  });
+
   it('falls back to defaults for invalid URL params', async () => {
     renderApp({ route: '/?sort=evil&page=-4&category=nope' });
     await productList();
     expect(screen.getByLabelText('Sort by')).toHaveValue('name-asc');
-    expect(screen.getByLabelText('Category')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
     expect(productTitles()[0]).toBe('Acer SB220Q 21.5 inch Monitor');
   });
 
@@ -124,10 +166,10 @@ describe('Catalog page', () => {
     expect(screen.getByText('Showing 13–14 of 14')).toBeInTheDocument();
   });
 
-  it('toggles the mobile filter disclosure', async () => {
+  it('toggles the mobile sort disclosure', async () => {
     const { user } = renderApp();
     await productList();
-    const toggle = screen.getByRole('button', { name: 'Filters' });
+    const toggle = screen.getByRole('button', { name: 'Sort' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await user.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
