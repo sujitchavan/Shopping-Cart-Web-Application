@@ -143,6 +143,65 @@ const productsApi = baseApi.injectEndpoints({
 export const rootReducer = combineSlices(cartSlice, baseApi);
 ```
 
+### 3. Performance: every cart row re-rendered on one quantity change
+
+**What the AI produced:** the cart page passed new inline callbacks to each row, and
+`CartLineItem` wasn't memoized. Clicking "+" on one item re-rendered every row in the cart.
+
+**Before:**
+
+```tsx
+// src/pages/CartPage/CartPage.tsx
+<CartLineItem
+  line={line}
+  onIncrement={() => dispatch(increment(line.productId))} // new function every render
+  onRemove={() => handleRemove(line.productId, line.title)}
+/>
+```
+
+**After** ([PR #18](https://github.com/sujitchavan/Shopping-Cart-Web-Application/pull/18), commit
+`1ede509`): callbacks take the product id and are created once, and the row is memoized by its
+values.
+
+```tsx
+// src/pages/CartPage/CartPage.tsx
+const handleIncrement = useCallback(
+  (productId: number) => dispatch(increment(productId)),
+  [dispatch],
+);
+<CartLineItem line={line} onIncrement={handleIncrement} onRemove={handleRemove} />;
+```
+
+```tsx
+// src/features/cart/components/CartLineItem/CartLineItem.tsx
+export const CartLineItem = memo(function CartLineItem(...) { ... }, propsEqual); // compares line values
+```
+
+**Result:** only the changed row re-renders. A new test (`CartPage.rerender.test.tsx`) failed on the
+
+## Verification
+
+**Example:** the cart re-render test from
+[PR #18](https://github.com/sujitchavan/Shopping-Cart-Web-Application/pull/18),
+`src/pages/CartPage/CartPage.rerender.test.tsx`.
+
+1. **Spotted it in code review.** In `CartPage.tsx`, each `CartLineItem` received new inline
+   functions (`onIncrement={() => dispatch(increment(line.productId))}`, etc.) on every render. I
+   suspected this would re-render every cart row on any cart change.
+2. **Confirmed it manually with the React Profiler.** I recorded one "+" click in a cart with many
+   items. Every `CartLineItem` rendered, and the commit took **33 ms**.
+3. **AI helped with the fix.** I gave it the exact expected behaviour: "3 items in the cart, click
+   '+' on one, the other two rows must not re-render." It implemented stable callbacks that take
+   `productId`, and `memo` on `CartLineItem`. It also wrote a test that counts renders per row.
+4. **The test failed, and I fixed it.** The first version of the test never counted any renders: a
+   top-level `vi.mock` was applied too late, because the test setup had already loaded the cart
+   code. It was switched to `vi.resetModules()` + `vi.doMock()`. Once the counter recorded real
+   renders, the test failed on the old code (`expected 1 to be +0`: an unchanged row re-rendered)
+   and passed with the fix.
+5. **Verified manually again with the Profiler.** The same click now takes **7.6 ms**, and the
+   unchanged rows are greyed out (did not render). The screenshots are in
+   [docs/performance-notes.md](docs/performance-notes.md#cart-page-re-renders-pr-18).
+
 ## A Disagreement: Zustand vs Redux Toolkit
 
 **AI suggestion:** in planning mode, the AI chose Zustand for the cart. Based on the current scope

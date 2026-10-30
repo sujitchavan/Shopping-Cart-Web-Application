@@ -10,8 +10,13 @@ Deployed build: <https://shopping-cart-web-application-axqo.vercel.app/>
 | Document on repeat visit                | `200`, 1.2 kB                       | `304 Not Modified`, 0.1 kB       |
 | JS + CSS on repeat visit                | ~178 kB downloaded from the network | 0 bytes (served from disk cache) |
 | Slowest static request on repeat visit  | 175 ms (`zod` chunk)                | 9 ms                             |
+| Cart page render on one quantity click  | 33 ms, every cart row re-renders    | 7.6 ms, only the changed row     |
 
-The fix is in commit `b09c10f` ("added JS bundle, asset initial load cache on refresh").
+Two fixes:
+
+- **Asset caching:** commit `b09c10f`, described in the sections below.
+- **Cart re-renders:** [PR #18](https://github.com/sujitchavan/Shopping-Cart-Web-Application/pull/18),
+  commit `1ede509`. See [Cart page re-renders](#cart-page-re-renders-pr-18).
 
 ## What I found
 
@@ -130,15 +135,57 @@ affects performance.
   shows that the change did not regress the first-load experience and that the deployed build
   scores well overall.
 
-## Re-render propagation (checked by design, not changed here)
+## Cart page re-renders (PR #18)
 
-The cart state is structured so that a cart change doesn't re-render the product grid:
+### What I found
 
-- Components subscribe through narrow hooks (`useCartCount`, `useCartLine(productId)`), not the
-  whole cart slice. Adding a product re-renders only the header badge and that product's
-  `AddToCartButton`.
-- Derived values (`selectCartItemCount`, `selectCartLinesWithPricing`,
-  `selectCartSubtotalCents`) are memoized `createSelector`s, so they return the same reference
-  when their inputs haven't changed.
-- `ProductCard` is wrapped in `React.memo`, so a parent re-render (for example, while the search
-  box is typing) does not re-render every card whose product prop is unchanged.
+On the cart page, clicking "+" or "−" on **one** item re-rendered **every** `CartLineItem` row.
+
+### How I diagnosed it
+
+**React DevTools Profiler** (Flamegraph): record, click "+" on one row of a cart with many items,
+stop.
+
+![Profiler before: CartPage render 33 ms, every CartLineItem row rendered (green)](images/cart-rerender-before.png)
+
+**Before:** the commit took **33 ms**, and every `CartLineItem` bar is coloured, meaning it
+rendered.
+
+### Cause
+
+```tsx
+// CartPage.tsx (before)
+<CartLineItem
+  line={line}
+  onIncrement={() => dispatch(increment(line.productId))} // new function every render
+  onRemove={() => handleRemove(line.productId, line.title)}
+/>
+```
+
+- `CartLineItem` wasn't wrapped in `memo`.
+- Each row got new inline callbacks on every render.
+- `priceCartLines` builds new line objects on every cart change, so `line` was never the same
+  reference.
+
+### What I changed
+
+- Callbacks take `productId` and are created once with `useCallback` (`handleIncrement`,
+  `handleDecrement`, `handleRemove`, `registerRemoveButton`).
+- `CartLineItem` is wrapped in `memo`, comparing the line's values instead of the object.
+- `handleRemove` reads the current lines from the store at click time, so it no longer changes on
+  every cart update.
+
+### Evidence
+
+![Profiler after: CartPage render 7.6 ms, unchanged rows greyed out (did not render)](images/cart-rerender-after.png)
+
+**After:** the commit took **7.6 ms**. The unchanged rows are hatched grey (did not render). Only
+the clicked row, the order summary and the badge rendered.
+
+| Profiler commit (one "+" click) | Before | After                |
+| ------------------------------- | ------ | -------------------- |
+| Total render time               | 33 ms  | 7.6 ms               |
+| `CartLineItem` rows rendered    | All    | Only the changed one |
+
+The new test `src/pages/CartPage/CartPage.rerender.test.tsx` failed on the old code (an unchanged
+row re-rendered) and passes after the fix, so this can't silently come back.

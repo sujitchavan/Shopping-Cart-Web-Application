@@ -62,6 +62,12 @@ Configuration: copy `.env.example` to `.env` to point at another API. `VITE_API_
 - `aria-disabled` limits that explain themselves.
 - Native `<dialog>` and `<select>` controls; reduced-motion support; dark mode.
 
+**Accessibility trade-offs (time constraints)**
+
+- **WCAG AAA isn't targeted.** The app aims for AA. AAA criteria, such as 7:1 contrast for
+  normal text, sign-language alternatives and extended help, weren't attempted because of time.
+- **Dark mode isn't checked by axe.** The scans only run in the light theme.
+
 ## Architecture
 
 ```mermaid
@@ -151,17 +157,17 @@ to show hundreds of rows.
 
 ### Cart failure scenarios handled
 
-| Scenario                         | Handling                                                                                                                                                                                                                                                               |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rapid repeated clicks            | Each click is one synchronous Redux action applied to the latest state, so there's no lost or doubled update. The reducer clamps at the limit (unit test: ten rapid increments).                                                                                       |
-| Stale state across tabs          | Another tab's write arrives as a `storage` event, is re-validated and replaces this tab's cart. Resolution is last write wins, with no merge. Hydrating isn't persisted, so tabs don't echo writes back and forth (E2E: `cross-tab.spec.ts`).                          |
-| Adding beyond stock              | FakeStore has no stock field, so the limit is 10 per line. The model accepts a `stock` value and uses the lower of the two when present. "+" is `aria-disabled` with a visible reason, and the reducer clamps too. Real stock must be checked server-side at checkout. |
-| Price changed since adding       | The total uses the live price, and the line says "price updated from $X".                                                                                                                                                                                              |
-| Product removed from catalogue   | Flagged "No longer available", excluded from the total, and only Remove is offered.                                                                                                                                                                                    |
-| Tampered or corrupted storage    | Per-line validation, clamping, key re-derivation and a 100 kB cap. Stored prices are never used for totals when live prices exist.                                                                                                                                     |
-| Storage blocked or full          | Falls back to memory, with a one-time notice.                                                                                                                                                                                                                          |
-| Catalogue fails on the cart page | The cart renders from snapshots, with a "prices may be out of date" banner and Retry.                                                                                                                                                                                  |
-| Accidental "Clear cart"          | A native `<dialog>` asks for confirmation. Cancel is focused first.                                                                                                                                                                                                    |
+| Scenario                         | Handling                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rapid repeated clicks            | Each click is one synchronous Redux action applied to the latest state, so there's no lost or doubled update. The reducer clamps at the limit (unit test: ten rapid increments).                                                                                                                                                                         |
+| Stale state across tabs          | Another tab's write arrives as a `storage` event, is re-validated and replaces this tab's cart. Resolution is last write wins, with no merge. Hydrating isn't persisted, so tabs don't echo writes back and forth (E2E: `cross-tab.spec.ts`). Simultaneous edits in two tabs are a [deliberate gap](docs/TESTING.md#edge-case-deliberately-not-handled). |
+| Adding beyond stock              | FakeStore has no stock field, so the limit is 10 per line. The model accepts a `stock` value and uses the lower of the two when present. "+" is `aria-disabled` with a visible reason, and the reducer clamps too. Real stock must be checked server-side at checkout.                                                                                   |
+| Price changed since adding       | The total uses the live price, and the line says "price updated from $X".                                                                                                                                                                                                                                                                                |
+| Product removed from catalogue   | Flagged "No longer available", excluded from the total, and only Remove is offered.                                                                                                                                                                                                                                                                      |
+| Tampered or corrupted storage    | Per-line validation, clamping, key re-derivation and a 100 kB cap. Stored prices are never used for totals when live prices exist.                                                                                                                                                                                                                       |
+| Storage blocked or full          | Falls back to memory, with a one-time notice.                                                                                                                                                                                                                                                                                                            |
+| Catalogue fails on the cart page | The cart renders from snapshots, with a "prices may be out of date" banner and Retry.                                                                                                                                                                                                                                                                    |
+| Accidental "Clear cart"          | A native `<dialog>` asks for confirmation. Cancel is focused first.                                                                                                                                                                                                                                                                                      |
 
 ## Quality gates
 
