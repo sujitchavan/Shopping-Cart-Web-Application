@@ -5,7 +5,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 const products: unknown = JSON.parse(
   readFileSync(new URL('../src/test/fixtures/products.json', import.meta.url), 'utf8'),
 );
-const placeholderSvg = readFileSync(new URL('../public/placeholder.svg', import.meta.url));
+const placeholderSvg = readFileSync(new URL('../src/assets/placeholder.svg', import.meta.url));
 
 /** Collects console errors (CSP violations, React errors, failed requests) for a final assertion. */
 export function trackConsoleErrors(page: Page): string[] {

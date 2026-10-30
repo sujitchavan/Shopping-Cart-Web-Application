@@ -1,6 +1,7 @@
-import { env } from '@/shared/config/env';
+import placeholderUrl from '@/assets/placeholder.svg';
 
-export const PLACEHOLDER_IMAGE = `${env.basePath}placeholder.svg`;
+// Imported (not in public/) so the build emits it as a content-hashed, long-cacheable asset.
+export const PLACEHOLDER_IMAGE = placeholderUrl;
 
 const MAX_URL_LENGTH = 2048;
 
